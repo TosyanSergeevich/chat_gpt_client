@@ -6,6 +6,7 @@ A Telegram bot that allows you to chat with ChatGPT and send images for analysis
 
 - Chat with ChatGPT through Telegram
 - Send images to ChatGPT for analysis
+- Web search functionality using Google Custom Search API
 - User access control
 - Configurable settings
 
@@ -14,6 +15,7 @@ A Telegram bot that allows you to chat with ChatGPT and send images for analysis
 - Go 1.16 or higher
 - Telegram Bot Token (from [@BotFather](https://t.me/BotFather))
 - OpenAI API Key
+- Google Custom Search API Key and Custom Search Engine ID (CX)
 
 ## Setup
 
@@ -32,6 +34,7 @@ go mod tidy
    - Copy `config/config.yaml.example` to `config/config.yaml`
    - Fill in your Telegram bot token and OpenAI API key
    - Add allowed user IDs if you want to restrict access
+   - Add your Google API key and Custom Search Engine ID
 
 4. Build and run the bot:
 ```bash
@@ -54,6 +57,10 @@ chatgpt:
   max_tokens: 1000
   temperature: 0.7
 
+google:
+  api_key: "YOUR_GOOGLE_API_KEY"  # Get from Google Cloud Console
+  cx: "YOUR_CUSTOM_SEARCH_ENGINE_ID"  # Get from Google Custom Search Engine
+
 server:
   port: 8080
 ```
@@ -63,12 +70,23 @@ server:
 1. Start a chat with your bot on Telegram
 2. Send text messages to chat with ChatGPT
 3. Send images with optional captions for image analysis
+4. Use the /websearch command to toggle web search mode
+5. When web search is enabled, the bot will perform real-time web searches using Google Custom Search API
+
+## Getting Google Custom Search API Credentials
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable the Custom Search API
+4. Create API credentials (API key)
+5. Go to the [Custom Search Engine](https://programmablesearchengine.google.com/) page
+6. Create a new search engine and get your Search Engine ID (CX)
 
 ## Security
 
 - The bot supports user access control through the `allowed_users` configuration
 - Keep your API keys secure and never commit them to version control
-- Consider using environment variables for sensitive information
+- The config.yaml file is included in .gitignore to prevent accidental commits of sensitive information
 
 ## License
 

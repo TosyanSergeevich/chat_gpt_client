@@ -17,8 +17,11 @@ type Client struct {
 }
 
 type Message struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role       string     `json:"role"`
+	Content    string     `json:"content"`
+	Name       string     `json:"name,omitempty"`
+	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
+	ToolCallID string     `json:"tool_call_id,omitempty"`
 }
 
 type ImageMessage struct {
@@ -46,9 +49,19 @@ type ChatCompletionRequest struct {
 type ChatCompletionResponse struct {
 	Choices []struct {
 		Message struct {
-			Content string `json:"content"`
+			Content   string     `json:"content"`
+			ToolCalls []ToolCall `json:"tool_calls,omitempty"`
 		} `json:"message"`
 	} `json:"choices"`
+}
+
+type ToolCall struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Function struct {
+		Name      string `json:"name"`
+		Arguments string `json:"arguments"`
+	} `json:"function"`
 }
 
 func NewClient(apiKey, model string, maxTokens int, temperature float64) *Client {
@@ -73,7 +86,6 @@ func (c *Client) SendMessage(messages []Message) (string, error) {
 		return "", fmt.Errorf("error marshaling request: %v", err)
 	}
 
-	// Log the request for debugging
 	log.Printf("Sending request to ChatGPT: %s", string(jsonData))
 
 	req, err := http.NewRequest("POST", "https://api.openai.com/v1/chat/completions", bytes.NewBuffer(jsonData))
@@ -96,49 +108,35 @@ func (c *Client) SendMessage(messages []Message) (string, error) {
 		return "", fmt.Errorf("error reading response: %v", err)
 	}
 
-	// Log the response for debugging
-	log.Printf("ChatGPT response status: %d", resp.StatusCode)
-	log.Printf("ChatGPT response body: %s", string(body))
-
-	// Check for API errors
-	if resp.StatusCode != http.StatusOK {
-		var errorResponse struct {
-			Error struct {
-				Message string `json:"message"`
-				Type    string `json:"type"`
-			} `json:"error"`
-		}
-		if err := json.Unmarshal(body, &errorResponse); err == nil {
-			return "", fmt.Errorf("API error: %s (type: %s)", errorResponse.Error.Message, errorResponse.Error.Type)
-		}
-		return "", fmt.Errorf("API error: status %d, body: %s", resp.StatusCode, string(body))
-	}
-
 	var response ChatCompletionResponse
 	if err := json.Unmarshal(body, &response); err != nil {
-		return "", fmt.Errorf("error unmarshaling response: %v, body: %s", err, string(body))
+		return "", fmt.Errorf("error parsing response: %v", err)
 	}
 
 	if len(response.Choices) == 0 {
-		return "", fmt.Errorf("no response from ChatGPT, full response: %s", string(body))
+		return "", fmt.Errorf("no response from ChatGPT")
 	}
 
 	return response.Choices[0].Message.Content, nil
 }
 
 func (c *Client) SendImageMessage(messages []ImageMessage) (string, error) {
-	jsonData, err := json.Marshal(map[string]interface{}{
-		"model":       c.model,
-		"messages":    messages,
-		"max_tokens":  c.maxTokens,
-		"temperature": c.temperature,
-	})
+	requestBody := struct {
+		Model       string         `json:"model"`
+		Messages    []ImageMessage `json:"messages"`
+		MaxTokens   int            `json:"max_tokens"`
+		Temperature float64        `json:"temperature"`
+	}{
+		Model:       c.model,
+		Messages:    messages,
+		MaxTokens:   c.maxTokens,
+		Temperature: c.temperature,
+	}
+
+	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
 		return "", fmt.Errorf("error marshaling request: %v", err)
 	}
-
-	// Log the request for debugging
-	log.Printf("Sending image request to ChatGPT: %s", string(jsonData))
 
 	req, err := http.NewRequest("POST", "https://api.openai.com/v1/chat/completions", bytes.NewBuffer(jsonData))
 	if err != nil {
@@ -160,31 +158,13 @@ func (c *Client) SendImageMessage(messages []ImageMessage) (string, error) {
 		return "", fmt.Errorf("error reading response: %v", err)
 	}
 
-	// Log the response for debugging
-	log.Printf("ChatGPT image response status: %d", resp.StatusCode)
-	log.Printf("ChatGPT image response body: %s", string(body))
-
-	// Check for API errors
-	if resp.StatusCode != http.StatusOK {
-		var errorResponse struct {
-			Error struct {
-				Message string `json:"message"`
-				Type    string `json:"type"`
-			} `json:"error"`
-		}
-		if err := json.Unmarshal(body, &errorResponse); err == nil {
-			return "", fmt.Errorf("API error: %s (type: %s)", errorResponse.Error.Message, errorResponse.Error.Type)
-		}
-		return "", fmt.Errorf("API error: status %d, body: %s", resp.StatusCode, string(body))
-	}
-
 	var response ChatCompletionResponse
 	if err := json.Unmarshal(body, &response); err != nil {
-		return "", fmt.Errorf("error unmarshaling response: %v, body: %s", err, string(body))
+		return "", fmt.Errorf("error parsing response: %v", err)
 	}
 
 	if len(response.Choices) == 0 {
-		return "", fmt.Errorf("no response from ChatGPT, full response: %s", string(body))
+		return "", fmt.Errorf("no response from ChatGPT")
 	}
 
 	return response.Choices[0].Message.Content, nil

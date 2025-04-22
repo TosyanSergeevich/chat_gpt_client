@@ -8,5 +8,9 @@ chatgpt:
   max_tokens: 1000
   temperature: 0.7
 
+google:
+  api_key: "YOUR_GOOGLE_API_KEY"  # Get from Google Cloud Console
+  cx: "YOUR_CUSTOM_SEARCH_ENGINE_ID"  # Get from Google Custom Search Engine
+
 server:
   port: 8080 
